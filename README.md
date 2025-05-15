@@ -1,8 +1,20 @@
 # Model Context Protocol (MCP) para Herramienta de Actualización de EKS con IA
 
+## Tabla de Contenidos
+
+1. [Introducción](#1-introducción)
+2. [Propósito del MCP](#2-propósito-del-mcp-en-este-proyecto)
+3. [Conceptos Clave](#3-conceptos-clave)
+4. [Estructura Conceptual del Contexto](#4-estructura-conceptual-del-contexto-mcp---fase-de-verificación)
+5. [El Protocolo: Cómo Funciona](#5-el-protocolo-cómo-funciona-fase-de-verificación)
+6. [Ejemplo de Estructura JSON del Contexto](#ejemplo-de-estructura-json-del-contexto)
+7. [Diagrama Conceptual del Flujo](#6-diagrama-conceptual-del-flujo-del-mcp-fase-de-verificación)
+8. [Próximos Pasos](#próximos-pasos)
+9. [Contribuciones](#contribuciones)
+
 ## 1. Introducción
 
-Este documento describe el **Model Context Protocol (MCP)**, un componente fundamental de nuestra herramienta para la actualización de clústeres Amazon EKS y sus componentes. El MCP define cómo se recopila, estructura y gestiona la información relevante (el "Contexto") que se proporciona a un modelo de Inteligencia Artificial para permitirle realizar tareas específicas dentro del proceso de actualización.
+El **Model Context Protocol (MCP)** es el componente central de nuestra herramienta para actualizar clústeres Amazon EKS. Define cómo se recopila, estructura y gestiona la información relevante ("Contexto") que se entrega a un modelo de Inteligencia Artificial, permitiendo automatizar la verificación previa y la generación de recomendaciones para el proceso de actualización.
 
 En la fase inicial de nuestra herramienta, el MCP está diseñado específicamente para soportar la funcionalidad de **Verificación Pre-actualización** y **Generación de Recomendaciones** por parte del modelo de IA.
 
@@ -71,7 +83,70 @@ El MCP define el flujo y las reglas para el manejo del contexto en la fase de ve
 5.  **Generación de Salida (Verificación y Recomendaciones):** El modelo de IA genera una salida que indica el resultado de la verificación (ej. "Verificación Exitosa con Advertencias") y una lista estructurada de Recomendaciones (ej. "Actualizar Add-on X a versión Y", "Investigar el estado del Node Group Z", "Considerar escalar el Deployment A antes de la actualización").
 6.  **Uso por la Herramienta:** La herramienta de actualización consume la salida del modelo de IA para presentar los resultados de la verificación y las recomendaciones al usuario, o potencialmente para tomar decisiones automatizadas (si la herramienta lo soporta).
 
-## 6. Diagrama Conceptual del Flujo del MCP (Fase de Verificación)
+## 6. Ejemplo de Estructura JSON del Contexto
+
+```json
+{
+  "cluster_info": {
+    "name": "mi-cluster",
+    "arn": "arn:aws:eks:us-west-2:123456789012:cluster/mi-cluster",
+    "id": "mi-cluster-id",
+    "region": "us-west-2",
+    "current_version": "1.18",
+    "target_version": "1.21"
+  },
+  "node_groups": [
+    {
+      "name": "ng-1",
+      "instance_type": "t3.medium",
+      "scaling_details": {"min_size": 2, "max_size": 5, "desired_size": 3},
+      "ami_version": "ami-0abcdef1234567890",
+      "kubelet_version": "1.18",
+      "status": "Ready",
+      "taints": [{"key": "dedicated", "value": "gpu", "effect": "NoSchedule"}],
+      "resource_metrics": {"cpu": "70%", "memory": "80%"}
+    }
+  ],
+  "addons": [
+    {
+      "name": "vpc-cni",
+      "current_version": "1.7.5",
+      "status": "ACTIVE",
+      "configuration": {"eni_config": "true", "max_enis": 5}
+    }
+  ],
+  "system_components": {
+    "kube_system": {
+      "pods_status": {"Running": 50, "Pending": 2, "Failed": 1},
+      "replicas": {"deployments": 10, "statefulsets": 2}
+    }
+  },
+  "networking": {
+    "vpc_id": "vpc-1234abcd",
+    "subnet_cidrs": ["10.0.0.0/24", "10.0.1.0/24"],
+    "security_groups": ["sg-1234abcd", "sg-5678efgh"]
+  },
+  "iam_roles": {
+    "cluster_role": "arn:aws:iam::123456789012:role/EKS-Cluster-Role",
+    "node_instance_role": "arn:aws:iam::123456789012:role/EKS-NodeInstance-Role"
+  },
+  "compatibility_data": {
+    "kubernetes": {"current": "1.18", "target": "1.21", "compatible": true},
+    "addons": [{"name": "vpc-cni", "version": "1.7.5", "compatible": true}]
+  },
+  "upgrade_history": [
+    {
+      "timestamp": "2021-06-01T12:00:00Z",
+      "version": "1.18",
+      "result": "Success",
+      "duration_minutes": 30,
+      "issues": []
+    }
+  ]
+}
+```
+
+## 7. Diagrama Conceptual del Flujo del MCP (Fase de Verificación)
 
 ```mermaid
 graph TD
@@ -93,3 +168,20 @@ graph TD
     class E process;
 
     linkStyle 0,1,2,3,4,5 stroke:#666,stroke-width:1px;
+```
+
+## 8. Próximos Pasos
+
+Los próximos pasos en el desarrollo e implementación del MCP y la herramienta de actualización de EKS incluyen:
+
+1. **Desarrollo del Módulo de Recopilación de Datos:** Implementar la lógica para interactuar con las APIs de AWS y Kubernetes, así como con fuentes externas, para la recopilación de datos.
+2. **Definición y Codificación de la Estructura del Contexto:** Codificar la estructura de datos del Contexto, incluyendo la serialización/deserialización a JSON u otros formatos necesarios.
+3. **Integración con el Modelo de IA:** Establecer la interfaz y el mecanismo para pasar el Contexto estructurado al modelo de IA y recibir sus resultados.
+4. **Desarrollo de la Lógica de Verificación y Recomendaciones:** Implementar la lógica que el modelo de IA utilizará para analizar el Contexto y generar recomendaciones.
+5. **Pruebas y Validación:** Realizar pruebas exhaustivas con clústeres de EKS de prueba para validar que el MCP y la herramienta de actualización funcionan como se espera.
+
+## 9. Contribuciones
+
+Las contribuciones al desarrollo del **Model Context Protocol (MCP)** y la herramienta de actualización de EKS son bienvenidas. Por favor, siga las pautas de contribución establecidas en nuestro repositorio para más detalles sobre cómo puede ayudar.
+
+---
