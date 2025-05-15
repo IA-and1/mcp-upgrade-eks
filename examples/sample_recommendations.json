@@ -1,0 +1,68 @@
+{
+  "verification_status": "warning",
+  "summary": "Verification completed with warnings. Recommended actions are required before proceeding with the update.",
+  "issues": [
+    {
+      "code": "V_ADDON_COMPATIBILITY",
+      "description": "Current VPC CNI version (1.16.3) is not compatible with target Kubernetes version 1.29. Minimum required is 1.17.0.",
+      "severity": "critical",
+      "related_context_path": "<span class="math-inline">\.addons\[?\(@\.name\=\='vpc\-cni'\)\]\.current\_version",
+"details"\: \{
+"addon\_name"\: "vpc\-cni",
+"current\_version"\: "1\.16\.3",
+"target\_k8s\_version"\: "1\.29",
+"required\_version"\: "1\.17\.0"
+\}
+\},
+\{
+"code"\: "V\_NODE\_GROUP\_HEALTH",
+"description"\: "Node Group 'data\-ng\-large' reports a health issue related to EC2 Launch Template version mismatch\.",
+"severity"\: "high",
+"related\_context\_path"\: "</span>.node_groups[?(@.name=='data-ng-large')].health.issues",
+      "details": {
+          "node_group_name": "data-ng-large",
+          "health_issue_code": "Ec2LaunchTemplateVersionMismatch"
+      }
+    },
+    {
+      "code": "V_KNOWN_ISSUE_MATCH",
+      "description": "Current/Target versions match a known issue (EKS-1-29-CNI-BUG-XYZ) related to VPC CNI 1.17.0 on K8s 1.29.",
+      "severity": "high",
+      "related_context_path": "$.compatibility_data.known_issues[?(@.id=='EKS-1-29-CNI-BUG-XYZ')]",
+      "details": {
+          "known_issue_id": "EKS-1-29-CNI-BUG-XYZ",
+          "affected_component": "vpc-cni"
+      }
+    }
+  ],
+  "recommendations": [
+    {
+      "code": "R_ADDON_UPGRADE",
+      "description": "Upgrade the VPC CNI add-on to version 1.17.0 or later BEFORE upgrading the Kubernetes version.",
+      "severity": "critical",
+      "suggested_action": "aws eks update-addon --cluster-name my-staging-cluster --addon-name vpc-cni --version 1.17.1-eksbuild.1 --resolve-conflicts overwrite",
+      "mitigates_issues": ["V_ADDON_COMPATIBILITY"]
+    },
+    {
+      "code": "R_INVESTIGATE_NODE_GROUP",
+      "description": "Investigate the health issue reported on Node Group 'data-ng-large' and resolve the launch template version mismatch.",
+      "severity": "high",
+      "suggested_action": "aws eks describe-node-group --cluster-name my-staging-cluster --node-group-name data-ng-large --query 'nodeGroup.health.issues'",
+      "mitigates_issues": ["V_NODE_GROUP_HEALTH"]
+    },
+     {
+      "code": "R_REVIEW_KNOWN_ISSUE",
+      "description": "Review known issue EKS-1-29-CNI-BUG-XYZ and evaluate potential impact or apply documented mitigation steps.",
+      "severity": "high",
+      "suggested_action": "Refer to AWS documentation for EKS-1-29-CNI-BUG-XYZ or related VPC CNI v1.17.0 issues.",
+      "mitigates_issues": ["V_KNOWN_ISSUE_MATCH"]
+    },
+     {
+      "code": "R_UPDATE_AMI",
+      "description": "Consider updating the AMI of Node Group 'app-ng-general' to the latest EKS optimized AMI for K8s 1.28 before the K8s upgrade.",
+      "severity": "low",
+      "suggested_action": "aws eks update-node-group-version --cluster-name my-staging-cluster --node-group-name app-ng-general --launch-template-id lt-xxxxxxxxxxxxxxxxx --release-version 1.28-xxxx",
+      "mitigates_issues": [] # This is a proactive recommendation
+     }
+  ]
+}

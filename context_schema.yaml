@@ -1,0 +1,229 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EKS Update Context Schema (Pre-Verification Phase)",
+  "description": "Schema defining the structure of the context data provided to the AI model for EKS cluster pre-update verification.",
+  "type": "object",
+  "properties": {
+    "cluster_info": {
+      "type": "object",
+      "description": "General information about the EKS cluster.",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the EKS cluster." },
+        "arn": { "type": "string", "description": "ARN of the EKS cluster." },
+        "region": { "type": "string", "description": "AWS region where the cluster resides." },
+        "current_k8s_version": { "type": "string", "description": "Current Kubernetes version of the cluster." },
+        "target_k8s_version": { "type": "string", "description": "Target Kubernetes version for the update." }
+      },
+      "required": [
+        "name",
+        "region",
+        "current_k8s_version",
+        "target_k8s_version"
+      ]
+    },
+    "node_groups": {
+      "type": "array",
+      "description": "List of Node Group configurations and states.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Name of the Node Group." },
+          "type": { "type": "string", "enum": ["MANAGED", "FARGATE", "SELF_MANAGED"], "description": "Type of Node Group." },
+          "instance_type": { "type": "string", "description": "EC2 instance type for managed/self-managed NGs." },
+          "ami_id": { "type": "string", "description": "AMI ID used for the nodes." },
+          "kubelet_version": { "type": "string", "description": "Kubelet version running on the nodes." },
+          "scaling_config": {
+            "type": "object",
+            "properties": {
+              "min_size": { "type": "integer" },
+              "max_size": { "type": "integer" },
+              "desired_size": { "type": "integer" }
+            }
+          },
+          "status": { "type": "string", "description": "Current status of the Node Group (e.g., READY, UPDATING, DEGRADED)." },
+          "node_count": { "type": "integer", "description": "Number of nodes in the group." },
+          "health": {
+            "type": "object",
+            "description": "Health issues reported for the Node Group.",
+            "properties": {
+              "issues": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "code": { "type": "string" },
+                    "message": { "type": "string" },
+                    "resource": { "type": "string" }
+                  },
+                  "required": ["code", "message"]
+                }
+              }
+            }
+          },
+          "tags": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Tags associated with the Node Group." }
+        },
+        "required": [
+          "name",
+          "type",
+          "status",
+          "node_count"
+        ]
+      }
+    },
+    "addons": {
+      "type": "array",
+      "description": "List of EKS managed add-ons configurations and states.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Name of the add-on (e.g., vpc-cni, coredns)." },
+          "current_version": { "type": "string", "description": "Current installed version." },
+          "resolve_conflicts": { "type": "string", "description": "Conflict resolution strategy." },
+          "status": { "type": "string", "description": "Current status (e.g., ACTIVE, CREATE_FAILED)." },
+          "configuration_values": { "type": "string", "description": "Configuration values (JSON string)." }
+        },
+        "required": [
+          "name",
+          "current_version",
+          "status"
+        ]
+      }
+    },
+     "system_component_status": {
+        "type": "array",
+        "description": "Status of critical Kubernetes system components (e.g., pods in kube-system).",
+        "items": {
+           "type": "object",
+           "properties": {
+             "name": {"type": "string", "description": "Name of the component (e.g., coredns, kube-proxy)."},
+             "namespace": {"type": "string", "description": "Namespace of the component."},
+             "resource_type": {"type": "string", "description": "Type of Kubernetes resource (e.g., Deployment, DaemonSet)."},
+             "current_replicas": {"type": "integer", "description": "Number of currently available replicas."},
+             "desired_replicas": {"type": "integer", "description": "Number of desired replicas."},
+             "status": {"type": "string", "description": "High-level status (e.g., Healthy, Degraded)."},
+             "warnings": {
+               "type": "array",
+               "items": {"type": "string"},
+               "description": "List of recent warnings or errors related to the component."
+             }
+           },
+           "required": ["name", "namespace", "resource_type", "current_replicas", "desired_replicas", "status"]
+        }
+    },
+    "network_security_config": {
+      "type": "object",
+      "description": "Relevant network and security configurations.",
+      "properties": {
+        "vpc_id": { "type": "string" },
+        "subnet_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "security_group_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+         "iam_roles": {
+            "type": "object",
+            "description": "Relevant IAM roles.",
+            "properties": {
+              "cluster_role_arn": {"type": "string"},
+              "node_instance_role_arn": {"type": "string"}
+              // Add other relevant roles like service-linked roles if needed
+            },
+             "required": ["cluster_role_arn", "node_instance_role_arn"]
+         }
+      },
+      "required": [
+        "vpc_id",
+        "subnet_ids",
+        "security_group_ids",
+        "iam_roles"
+      ]
+    },
+    "compatibility_data": {
+        "type": "object",
+        "description": "External data or internal knowledge base about version compatibility and known issues.",
+        "properties": {
+            "k8s_addon_matrix": {
+                "type": "object",
+                 "description": "Compatibility matrix for Kubernetes versions and add-ons.",
+                 "additionalProperties": { // K8s Version (e.g., "1.29")
+                     "type": "object",
+                     "additionalProperties": { // Add-on Name (e.g., "vpc-cni")
+                         "type": "string", // Minimum compatible version (e.g., "1.17.0")
+                         "description": "Minimum compatible version for this Kubernetes version."
+                     }
+                 }
+            },
+             "version_requirements": {
+                 "type": "object",
+                 "description": "Specific requirements for upgrading to the target version.",
+                 "properties": {
+                      "min_current_k8s_version": {"type": "string", "description": "Minimum required current K8s version to upgrade to target."},
+                      "required_addon_versions": {
+                          "type": "object",
+                           "description": "Required minimum versions for specific add-ons for the target K8s version.",
+                           "additionalProperties": {"type": "string"} // Add-on name: min_version
+                      }
+                      // Add other requirements like minimum node OS version, etc.
+                 }
+             },
+            "known_issues": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string"},
+                        "description": {"type": "string"},
+                        "severity": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+                        "affected_versions": {
+                           "type": "object",
+                           "properties": {
+                              "k8s": {"type": "array", "items": {"type": "string"}},
+                              "addon": {"type": "array", "items": {"type": "string"}}
+                              // Add other affected components
+                           }
+                        },
+                        "mitigation": {"type": "string", "description": "Suggested steps to mitigate the issue."}
+                    },
+                     "required": ["id", "description", "severity"]
+                },
+                 "description": "List of known issues relevant to the current or target version."
+            }
+        },
+         "required": [
+             "k8s_addon_matrix",
+             "version_requirements"
+         ]
+    },
+    "history": {
+      "type": "object",
+      "description": "Historical data relevant to the cluster or updates.",
+      "properties": {
+        "last_update_status": { "type": "string", "enum": ["SUCCESS", "FAILURE", "N/A"], "description": "Status of the last update attempt." },
+        "last_update_timestamp": { "type": "string", "format": "date-time", "description": "Timestamp of the last update attempt." },
+        "previous_issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": {"type": "string", "format": "date-time"},
+              "description": {"type": "string"},
+              "severity": {"type": "string"}
+            },
+             "required": ["timestamp", "description", "severity"]
+          },
+           "description": "Record of significant past issues not necessarily tied to updates."
+        }
+      }
+    }
+  },
+  "required": [
+    "cluster_info",
+    "node_groups",
+    "addons",
+    "network_security_config",
+    "compatibility_data"
+  ]
+}

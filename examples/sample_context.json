@@ -1,0 +1,130 @@
+# examples/sample_context.yaml
+# Ejemplo de un objeto de Contexto para la verificación previa a la actualización de EKS
+
+cluster_info:
+  name: my-staging-cluster
+  arn: arn:aws:eks:us-east-2:123456789012:cluster/my-staging-cluster
+  region: us-east-2
+  current_k8s_version: "1.28"
+  target_k8s_version: "1.29"
+
+node_groups:
+  - name: app-ng-general
+    type: MANAGED
+    instance_type: m5.large
+    ami_id: ami-0abcdef1234567890 # Ejemplo
+    kubelet_version: "1.28"
+    scaling_config:
+      min_size: 3
+      max_size: 10
+      desired_size: 5
+    status: READY
+    node_count: 5
+    health:
+      issues: [] # No issues reported by EKS managed NG health
+    tags:
+      kubernetes.io/cluster/my-staging-cluster: owned
+      Environment: staging
+
+  - name: data-ng-large
+    type: MANAGED
+    instance_type: r6g.xlarge
+    ami_id: ami-0ghijkl0987654321 # Ejemplo
+    kubelet_version: "1.28"
+    scaling_config:
+      min_size: 2
+      max_size: 5
+      desired_size: 2
+    status: READY
+    node_count: 2
+    health:
+      issues: # Ejemplo de un issue reportado
+        - code: Ec2LaunchTemplateVersionMismatch
+          message: "Node group uses EC2 launch template version X, but cluster control plane is using version Y."
+          resource: null
+    tags:
+      kubernetes.io/cluster/my-staging-cluster: owned
+      App: data-processing
+
+addons:
+  - name: vpc-cni
+    current_version: "1.16.3-eksbuild.1"
+    resolve_conflicts: NONE
+    status: ACTIVE
+    configuration_values: "{\"env\":{\"ENABLE_POD_ENI\":\"true\"}}" # Ejemplo
+
+  - name: coredns
+    current_version: "1.10.1-eksbuild.5"
+    resolve_conflicts: OVERWRITE
+    status: ACTIVE
+    configuration_values: "{}" # Ejemplo
+
+  - name: kube-proxy
+    current_version: "1.28.3-eksbuild.2"
+    resolve_conflicts: OVERWRITE
+    status: ACTIVE
+    configuration_values: "{}" # Ejemplo
+
+system_component_status:
+  - name: coredns
+    namespace: kube-system
+    resource_type: Deployment
+    current_replicas: 2
+    desired_replicas: 2
+    status: Healthy
+    warnings: []
+
+  - name: aws-node
+    namespace: kube-system
+    resource_type: DaemonSet
+    current_replicas: 5 # Debería ser igual al número de nodos Ready
+    desired_replicas: 5
+    status: Healthy # O Degraded si hay pods no corriendo
+    warnings: []
+
+network_security_config:
+  vpc_id: vpc-0123456789abcdef0
+  subnet_ids:
+    - subnet-0abcdef1234567890
+    - subnet-0fedcba9876543210
+    - subnet-0123456789fedcba9
+  security_group_ids:
+    - sg-0123456789abcdef0 # SG del control plane
+    - sg-0fedcba9876543210 # SG de los nodos
+  iam_roles:
+    cluster_role_arn: arn:aws:iam::123456789012:role/my-eks-cluster-role
+    node_instance_role_arn: arn:aws:iam::123456789012:role/AmazonEKSNodeCanvasContainerRole
+
+compatibility_data:
+  k8s_addon_matrix:
+    "1.29": # Requisitos para la versión objetivo 1.29
+      "vpc-cni": "1.17.0"
+      "coredns": "1.10.1" # O versión específica para 1.29
+      "kube-proxy": "1.29.0" # O versión específica para 1.29
+  version_requirements:
+    min_current_k8s_version: "1.28" # Ejemplo: para pasar a 1.29 debes estar en 1.28 o superior
+    required_addon_versions:
+      "vpc-cni": "1.17.0" # Confirma requisito mínimo de CNI para 1.29
+  known_issues:
+    - id: EKS-1-29-CNI-BUG-XYZ
+      description: "Known issue with VPC CNI 1.17.0 on K8s 1.29 causing sporadic pod network issues under heavy load."
+      severity: high
+      affected_versions:
+        k8s: ["1.29"]
+        addon: ["vpc-cni:1.17.0"]
+      mitigation: "Upgrade VPC CNI to 1.17.1 or later if available, or use alternative CNI."
+    - id: EKS-1-28-NODE-DRAIN-FAIL
+      description: "Nodes on 1.28 with AMI older than Y might fail to drain properly during rolling updates."
+      severity: medium
+      affected_versions:
+        k8s: ["1.28"]
+        # Affected AMIs could be listed here
+      mitigation: "Ensure node AMIs are up to date or cordon/drain nodes manually."
+
+history:
+  last_update_status: SUCCESS
+  last_update_timestamp: "2023-10-27T10:00:00Z" # Fecha y hora del último éxito
+  previous_issues: # Ejemplos de problemas pasados no relacionados con la última actualización
+    - timestamp: "2023-10-20T14:30:00Z"
+      description: "Problema de red temporal afectando pods debido a alta carga en CNI."
+      severity: medium
