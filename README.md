@@ -5,85 +5,56 @@
 1. [Introducción](#1-introducción)
 2. [Propósito del MCP](#2-propósito-del-mcp-en-este-proyecto)
 3. [Conceptos Clave](#3-conceptos-clave)
-4. [Estructura Conceptual del Contexto](#4-estructura-conceptual-del-contexto-mcp---fase-de-verificación)
-5. [El Protocolo: Cómo Funciona](#5-el-protocolo-cómo-funciona-fase-de-verificación)
-6. [Ejemplo de Estructura JSON del Contexto](#ejemplo-de-estructura-json-del-contexto)
-7. [Diagrama Conceptual del Flujo](#6-diagrama-conceptual-del-flujo-del-mcp-fase-de-verificación)
-8. [Próximos Pasos](#próximos-pasos)
-9. [Contribuciones](#contribuciones)
+4. [Estructura del Contexto MCP](#4-estructura-del-contexto-mcp)
+5. [Flujo del Protocolo MCP](#5-flujo-del-protocolo-mcp)
+6. [Ejemplo de Contexto JSON](#6-ejemplo-de-contexto-json)
+7. [Diagrama del Flujo MCP](#7-diagrama-del-flujo-mcp)
+8. [Próximos Pasos](#8-próximos-pasos)
+9. [Contribuciones](#9-contribuciones)
+
+---
 
 ## 1. Introducción
 
 El **Model Context Protocol (MCP)** es el componente central de nuestra herramienta para actualizar clústeres Amazon EKS. Define cómo se recopila, estructura y gestiona la información relevante ("Contexto") que se entrega a un modelo de Inteligencia Artificial, permitiendo automatizar la verificación previa y la generación de recomendaciones para el proceso de actualización.
 
-En la fase inicial de nuestra herramienta, el MCP está diseñado específicamente para soportar la funcionalidad de **Verificación Pre-actualización** y **Generación de Recomendaciones** por parte del modelo de IA.
+## 2. Propósito del MCP
 
-## 2. Propósito del MCP en este Proyecto
+El MCP busca:
 
-El objetivo principal del MCP en nuestra herramienta de actualización de EKS es:
-
-* Proveer al modelo de IA una **vista unificada y estructurada** del estado actual del clúster EKS, su configuración, historial relevante y otra información pertinente.
-* Asegurar que el modelo de IA tenga acceso a todo el **contexto necesario** para evaluar la preparación del clúster para una actualización.
-* Facilitar que el modelo de IA identifique proactivamente posibles **problemas, incompatibilidades o riesgos** antes de que comience el proceso de actualización.
-* Permitir que el modelo de IA genere **recomendaciones precisas y accionables** basadas en el contexto proporcionado.
-
-Sin un protocolo claro para manejar el contexto, sería difícil para el modelo de IA obtener la información necesaria de manera consistente y confiable para tomar decisiones o proporcionar insights útiles.
+- Proveer al modelo de IA una vista unificada y estructurada del estado actual del clúster EKS.
+- Asegurar que el modelo de IA tenga acceso a todo el contexto necesario para evaluar la preparación del clúster para una actualización.
+- Facilitar la identificación proactiva de posibles problemas, incompatibilidades o riesgos antes de la actualización.
+- Permitir la generación de recomendaciones precisas y accionables.
 
 ## 3. Conceptos Clave
 
-* **Contexto (Context):** El conjunto de datos e información relevante sobre el clúster EKS, su entorno y el proceso de actualización que es necesario para que el modelo de IA opere.
-* **Protocolo (Protocol):** Las reglas, formatos y procedimientos definidos para la recopilación, estructuración, manejo y entrega del Contexto al modelo de IA.
-* **Modelo de IA (AI Model):** El componente de software que consume el Contexto proporcionado por el MCP para realizar análisis (verificación) y generar resultados (recomendaciones).
+- **Contexto:** Datos relevantes sobre el clúster EKS, su entorno y el proceso de actualización.
+- **Protocolo:** Reglas y formatos para la recopilación, estructuración y entrega del Contexto al modelo de IA.
+- **Modelo de IA:** Componente que consume el Contexto para análisis y generación de recomendaciones.
 
-## 4. Estructura Conceptual del Contexto (MCP - Fase de Verificación)
+## 4. Estructura del Contexto MCP
 
-El Contexto que el MCP estructura y gestiona para la fase de verificación previa a la actualización incluye, pero no se limita a, las siguientes categorías de información:
+El Contexto MCP incluye:
 
-* **Información General del Clúster:**
-    * Nombre, ARN, ID del Clúster.
-    * Región de AWS.
-    * Versión actual de EKS y Kubernetes.
-    * Versión objetivo de EKS y Kubernetes.
-* **Configuración y Estado de Node Groups:**
-    * Lista de Node Groups (Gestionados, Fargate, Self-Managed).
-    * Para cada Node Group: Nombre, tipo de instancia, detalles de escalado, versión de AMI/OS, versión de Kubelet, estado actual (Ready, NotReady, etc.), configuración de taints/tolerations.
-    * Métricas básicas de recursos agregadas por Node Group.
-* **Configuración y Estado de Add-ons Gestionados por EKS:**
-    * Lista de Add-ons instalados (VPC CNI, CoreDNS, Kube-proxy, EBS CSI, etc.).
-    * Para cada Add-on: Nombre, versión actual instalada, estado, configuración específica.
-* **Estado de Componentes Críticos del Sistema y Cargas de Trabajo:**
-    * Estado y número de réplicas de pods del `kube-system` y otros namespaces críticos (CoreDNS, CNI pods, etc.).
-    * Información agregada sobre las cargas de trabajo de aplicación (número de Deployments/StatefulSets, estado general - Healthy/Unhealthy, pods en estado de error o reinicio constante).
-* **Configuración de Red y Seguridad Relevante:**
-    * VPC ID, rangos CIDR de subredes asociadas al clúster.
-    * Security Groups asociados al control plane de EKS y a los Node Groups.
-    * Detalles básicos de IAM roles utilizados (EKS cluster role, Node group instance profile role).
-* **Datos de Referencia y Compatibilidad:**
-    * Información sobre la compatibilidad entre la versión actual y objetivo de Kubernetes, Add-ons y AMI (extraída de fuentes externas o bases de conocimiento).
-    * Requisitos previos documentados para la versión objetivo.
-    * Problemas conocidos o breaking changes asociados a las versiones involucradas.
-* **Historial (si disponible):**
-    * Registros de actualizaciones anteriores en este clúster (resultados, duración, problemas).
-    * Patrones históricos de comportamiento o problemas en este clúster.
+- **Información General del Clúster:** Nombre, ARN, ID, región, versiones actual y objetivo.
+- **Node Groups:** Lista y detalles de node groups (tipo, escalado, AMI, Kubelet, estado, taints, métricas).
+- **Add-ons Gestionados:** Lista y detalles de add-ons instalados (nombre, versión, estado, configuración).
+- **Componentes Críticos y Cargas de Trabajo:** Estado de pods y réplicas en namespaces críticos, estado general de aplicaciones.
+- **Red y Seguridad:** VPC, subredes, security groups, roles IAM.
+- **Compatibilidad:** Información sobre compatibilidad de versiones y requisitos previos.
+- **Historial:** Registros de actualizaciones anteriores y patrones históricos.
 
-La estructura específica de cómo se organizan estos datos (ej. en un objeto JSON con secciones anidadas) será definida en la implementación del protocolo, pero la enumeración anterior define el *qué* del contexto.
+## 5. Flujo del Protocolo MCP
 
-## 5. El Protocolo: Cómo Funciona (Fase de Verificación)
+1. **Recopilación de Datos:** Interacción con APIs de AWS/Kubernetes y fuentes externas.
+2. **Estructuración del Contexto:** Transformación y organización de datos en la estructura definida.
+3. **Presentación al Modelo de IA:** El Contexto se pasa como entrada al modelo.
+4. **Procesamiento por el Modelo de IA:** Análisis del Contexto, identificación de riesgos y generación de recomendaciones.
+5. **Generación de Salida:** Resultado de la verificación y lista de recomendaciones.
+6. **Consumo por la Herramienta:** Presentación de resultados al usuario o toma de decisiones automatizadas.
 
-El MCP define el flujo y las reglas para el manejo del contexto en la fase de verificación:
-
-1.  **Recopilación de Datos:** La herramienta interactúa con las APIs de AWS (EKS, EC2, IAM, CloudWatch, etc.) y potencialmente con la API de Kubernetes para obtener toda la información listada en la Estructura del Contexto. También puede consultar fuentes externas (documentación de AWS, bases de datos de problemas conocidos).
-2.  **Estructuración del Contexto:** Los datos recopilados se transforman y organizan en una estructura de datos definida por el protocolo (ej. el objeto JSON conceptual). Se aplica cualquier lógica necesaria para formatear los datos de manera consistente para el modelo de IA.
-3.  **Presentación al Modelo de IA:** El Contexto estructurado se pasa como entrada al modelo de IA. La forma exacta dependerá de cómo esté implementado el modelo (ej. como parámetros de una función/API, cargado desde un archivo, etc.).
-4.  **Procesamiento por el Modelo de IA:** El modelo de IA analiza el Contexto proporcionado para:
-    * Comparar el estado actual con los requisitos de la versión objetivo.
-    * Identificar incompatibilidades de versiones de Add-ons o Kubelet.
-    * Detectar configuraciones subóptimas o riesgos potenciales (ej. bajo espacio libre en disco en nodos, alta utilización de recursos, pods críticos en estado de error).
-    * Evaluar el estado general de salud del clúster.
-5.  **Generación de Salida (Verificación y Recomendaciones):** El modelo de IA genera una salida que indica el resultado de la verificación (ej. "Verificación Exitosa con Advertencias") y una lista estructurada de Recomendaciones (ej. "Actualizar Add-on X a versión Y", "Investigar el estado del Node Group Z", "Considerar escalar el Deployment A antes de la actualización").
-6.  **Uso por la Herramienta:** La herramienta de actualización consume la salida del modelo de IA para presentar los resultados de la verificación y las recomendaciones al usuario, o potencialmente para tomar decisiones automatizadas (si la herramienta lo soporta).
-
-## 6. Ejemplo de Estructura JSON del Contexto
+## 6. Ejemplo de Contexto JSON
 
 ```json
 {
@@ -146,42 +117,28 @@ El MCP define el flujo y las reglas para el manejo del contexto en la fase de ve
 }
 ```
 
-## 7. Diagrama Conceptual del Flujo del MCP (Fase de Verificación)
+## 7. Diagrama del Flujo MCP
 
 ```mermaid
-graph TD
-    A[Fuentes de Datos<br>(AWS APIs, K8s API, Docs AWS, Historial)] --> B(Módulo de Recopilación de Datos<br>de la Herramienta);
-    B --> C{MCP<br>Estructuración del Contexto};
-    C --> D[Contexto Estructurado];
-    D --> E[Modelo de IA<br>(Verificación y Recomendaciones)];
-    E --> F[Resultados del Modelo<br>(Estado Verificación, Recomendaciones)];
-    F --> G[Lógica Principal de la Herramienta<br>(Presentar al Usuario/Tomar Acciones)];
-
-    %% Estilos (Opcional, para claridad visual)
-    classDef process fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef data fill:#ccf,stroke:#333,stroke-width:2px;
-    classDef external fill:#cfc,stroke:#333,stroke-width:2px;
-    class A,F external;
-    class B,G process;
-    class C process; %% MCP es un proceso de estructuración/gestión aquí
-    class D data;
-    class E process;
-
-    linkStyle 0,1,2,3,4,5 stroke:#666,stroke-width:1px;
+flowchart TD
+    A[Fuentes de Datos<br>(AWS APIs, K8s API, Documentación, Historial)] --> B[Módulo de Recopilación de Datos]
+    B --> C[MCP: Estructuración del Contexto]
+    C --> D[Contexto Estructurado]
+    D --> E[Modelo de IA<br>(Verificación y Recomendaciones)]
+    E --> F[Resultados del Modelo<br>(Estado y Recomendaciones)]
+    F --> G[Lógica Principal de la Herramienta<br>(Presentación/Toma de Acciones)]
 ```
 
 ## 8. Próximos Pasos
 
-Los próximos pasos en el desarrollo e implementación del MCP y la herramienta de actualización de EKS incluyen:
-
-1. **Desarrollo del Módulo de Recopilación de Datos:** Implementar la lógica para interactuar con las APIs de AWS y Kubernetes, así como con fuentes externas, para la recopilación de datos.
-2. **Definición y Codificación de la Estructura del Contexto:** Codificar la estructura de datos del Contexto, incluyendo la serialización/deserialización a JSON u otros formatos necesarios.
-3. **Integración con el Modelo de IA:** Establecer la interfaz y el mecanismo para pasar el Contexto estructurado al modelo de IA y recibir sus resultados.
-4. **Desarrollo de la Lógica de Verificación y Recomendaciones:** Implementar la lógica que el modelo de IA utilizará para analizar el Contexto y generar recomendaciones.
-5. **Pruebas y Validación:** Realizar pruebas exhaustivas con clústeres de EKS de prueba para validar que el MCP y la herramienta de actualización funcionan como se espera.
+- Implementar el módulo de recopilación de datos.
+- Definir y codificar la estructura del Contexto.
+- Integrar con el modelo de IA.
+- Desarrollar la lógica de verificación y recomendaciones.
+- Realizar pruebas y validación.
 
 ## 9. Contribuciones
 
-Las contribuciones al desarrollo del **Model Context Protocol (MCP)** y la herramienta de actualización de EKS son bienvenidas. Por favor, siga las pautas de contribución establecidas en nuestro repositorio para más detalles sobre cómo puede ayudar.
+Las contribuciones son bienvenidas. Por favor, siga las pautas de contribución establecidas en el repositorio.
 
 ---
